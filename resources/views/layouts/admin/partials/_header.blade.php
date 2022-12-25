@@ -70,29 +70,15 @@
                         <!-- Notification -->
                         <div class="hs-unfold">
                             <a class="js-hs-unfold-invoker btn btn-icon btn-ghost-secondary rounded-circle"
-                               href="{{route('admin.message.list')}}">
+                               href="">
                                 <i class="tio-messages-outlined"></i>
-{{--                                @php($message=\App\Model\Conversation::where('checked',0)->count())--}}
-{{--                                @if($message!=0)--}}
-{{--                                    <span class="btn-status btn-sm-status btn-status-danger"></span>--}}
-{{--                                @endif--}}
+
                             </a>
                         </div>
                         <!-- End Notification -->
                     </li>
 
-                    <li class="nav-item d-none d-sm-inline-block">
-                        <!-- Notification -->
-                        <div class="hs-unfold">
-                            <a class="js-hs-unfold-invoker btn btn-icon btn-ghost-secondary rounded-circle"
-                               href="{{route('admin.orders.list',['status'=>'pending'])}}">
-                                <i class="tio-shopping-cart-outlined"></i>
-                                {{--<span class="btn-status btn-sm-status btn-status-danger"></span>--}}
-                            </a>
-                        </div>
-                        <!-- End Notification -->
-                    </li>
-
+                 
 
                     <li class="nav-item">
                         <!-- Account -->

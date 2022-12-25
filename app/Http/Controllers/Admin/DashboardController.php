@@ -6,7 +6,6 @@ use App\CentralLogics\Helpers;
 use App\Http\Controllers\Controller;
 use App\Model\Admin;
 use App\Model\Branch;
-use App\Model\Client;
 use App\Model\Income;
 use App\Model\Category;
 use App\Model\Order;
@@ -37,102 +36,13 @@ class DashboardController extends Controller
 
     public function dashboard()
     {
-        $top_sell = OrderDetail::with(['product'])
-            ->select('product_id', DB::raw('SUM(quantity) as count'))
-            ->groupBy('product_id')
-            ->orderBy("count", 'desc')
-            ->take(6)
-            ->get();
-
-        $most_rated_products = Review::with(['product'])
-            ->select(['product_id',
-                DB::raw('AVG(rating) as ratings_average'),
-                DB::raw('COUNT(rating) as total'),
-            ])
-            ->groupBy('product_id')
-            ->orderBy("total", 'desc')
-            ->take(6)
-            ->get();
-
-        $top_customer = Order::with(['customer'])
-            ->select('user_id', DB::raw('COUNT(user_id) as count'))
-            ->groupBy('user_id')
-            ->orderBy("count", 'desc')
-            ->take(6)
-            ->get();
+       
 
         $data = self::order_stats_data();
 
         $data['customer'] = User::count();
-        $data['clients'] = Client::count();
-        $data['incomes'] =  DB::table('incomes')->sum('amount');
 
-        $currentYear = Carbon::now()->year;
-        $data['expenses'] =  DB::table('expenses')->where('month',$currentYear)->sum('total');
-
-        $data['product'] = Product::count();
-        $data['order'] = Order::count();
-        $data['category'] = Category::where('parent_id', 0)->count();
-        $data['branch'] = Branch::count();
-
-        $data['top_sell'] = $top_sell;
-        $data['most_rated_products'] = $most_rated_products;
-        $data['top_customer'] = $top_customer;
-
-        $from = \Carbon\Carbon::now()->startOfYear()->format('Y-m-d');
-        $to = Carbon::now()->endOfYear()->format('Y-m-d');
-
-        $earning = [];
-        $earning_data = Order::where([
-            'order_status' => 'delivered',
-        ])->where('order_type', '!=', 'pos')
-            ->select(
-            DB::raw('IFNULL(sum(order_amount),0) as sums'),
-            DB::raw('YEAR(created_at) year, MONTH(created_at) month')
-        )->whereBetween('created_at', [$from, $to])->groupby('year', 'month')->get()->toArray();
-        for ($inc = 1; $inc <= 12; $inc++) {
-            $earning[$inc] = 0;
-            foreach ($earning_data as $match) {
-                if ($match['month'] == $inc) {
-                    $earning[$inc] = Helpers::set_price($match['sums']);
-                }
-            }
-        }
-
-        $table_earning = [];
-        $table_earning_data = Order::where([
-            'order_status' => 'completed'
-        ])->select(
-            DB::raw('IFNULL(sum(order_amount),0) as sums'),
-            DB::raw('YEAR(created_at) year, MONTH(created_at) month')
-        )->whereBetween('created_at', [$from, $to])->groupby('year', 'month')->get()->toArray();
-        for ($inc = 1; $inc <= 12; $inc++) {
-            $table_earning[$inc] = 0;
-            foreach ($table_earning_data as $match) {
-                if ($match['month'] == $inc) {
-                    $table_earning[$inc] = Helpers::set_price($match['sums']);
-                }
-            }
-        }
-
-        $pos_earning = [];
-        $pos_earning_data = Order::where([
-            'order_status' => 'delivered', 'order_type' => 'pos'
-        ])
-            ->select(
-                DB::raw('IFNULL(sum(order_amount),0) as sums'),
-                DB::raw('YEAR(created_at) year, MONTH(created_at) month')
-            )->whereBetween('created_at', [$from, $to])->groupby('year', 'month')->get()->toArray();
-        for ($inc = 1; $inc <= 12; $inc++) {
-            $pos_earning[$inc] = 0;
-            foreach ($pos_earning_data as $match) {
-                if ($match['month'] == $inc) {
-                    $pos_earning[$inc] = Helpers::set_price($match['sums']);
-                }
-            }
-        }
-
-        return view('admin-views.dashboard', compact('data', 'earning', 'table_earning', 'pos_earning'));
+        return view('admin-views.dashboard', compact('data'));
     }
 
     public function order_stats(Request $request)
@@ -149,82 +59,6 @@ class DashboardController extends Controller
         $today = session()->has('statistics_type') && session('statistics_type') == 'today' ? 1 : 0;
         $this_month = session()->has('statistics_type') && session('statistics_type') == 'this_month' ? 1 : 0;
 
-        $pending = Order::where(['order_status' => 'pending'])->notSchedule()
-            ->when($today, function ($query) {
-                return $query->whereDate('created_at', \Carbon\Carbon::today());
-            })
-            ->when($this_month, function ($query) {
-                return $query->whereMonth('created_at', Carbon::now());
-            })
-            ->count();
-        $confirmed = Order::where(['order_status' => 'confirmed'])
-            ->when($today, function ($query) {
-                return $query->whereDate('created_at', Carbon::today());
-            })
-            ->when($this_month, function ($query) {
-                return $query->whereMonth('created_at', Carbon::now());
-            })
-            ->count();
-        $processing = Order::where(['order_status' => 'processing'])
-            ->when($today, function ($query) {
-                return $query->whereDate('created_at', Carbon::today());
-            })
-            ->when($this_month, function ($query) {
-                return $query->whereMonth('created_at', Carbon::now());
-            })
-            ->count();
-        $out_for_delivery = Order::where(['order_status' => 'out_for_delivery'])
-            ->when($today, function ($query) {
-                return $query->whereDate('created_at', Carbon::today());
-            })
-            ->when($this_month, function ($query) {
-                return $query->whereMonth('created_at', Carbon::now());
-            })
-            ->count();
-        $delivered = Order::where(['order_status' => 'delivered'])
-            ->when($today, function ($query) {
-                return $query->whereDate('created_at', Carbon::today());
-            })
-            ->when($this_month, function ($query) {
-                return $query->whereMonth('created_at', Carbon::now());
-            })
-            ->count();
-        $all = Order::when($today, function ($query) {
-            return $query->whereDate('created_at', Carbon::today());
-        })
-            ->when($this_month, function ($query) {
-                return $query->whereMonth('created_at', Carbon::now());
-            })
-            ->count();
-        $returned = Order::where(['order_status' => 'returned'])
-            ->when($today, function ($query) {
-                return $query->whereDate('created_at', Carbon::today());
-            })
-            ->when($this_month, function ($query) {
-                return $query->whereMonth('created_at', Carbon::now());
-            })
-            ->count();
-        $failed = Order::where(['order_status' => 'failed'])
-            ->when($today, function ($query) {
-                return $query->whereDate('created_at', Carbon::today());
-            })
-            ->when($this_month, function ($query) {
-                return $query->whereMonth('created_at', Carbon::now());
-            })
-            ->count();
-
-        $data = [
-            'pending' => $pending,
-            'confirmed' => $confirmed,
-            'processing' => $processing,
-            'out_for_delivery' => $out_for_delivery,
-            'delivered' => $delivered,
-            'all' => $all,
-            'returned' => $returned,
-            'failed' => $failed
-        ];
-
-        return $data;
     }
 
 

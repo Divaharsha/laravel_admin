@@ -299,28 +299,6 @@
         }, 10000);
     @endif
 
-    function check_order() {
-        location.href = '{{route('admin.orders.list',['status'=>'pending'])}}';
-    }
-
-    function route_alert(route, message) {
-        Swal.fire({
-            title: '{{translate("Are you sure?")}}',
-            text: message,
-            type: 'warning',
-            showCancelButton: true,
-            cancelButtonColor: 'default',
-            confirmButtonColor: '#FC6A57',
-            cancelButtonText: '{{translate("No")}}',
-            confirmButtonText:'{{translate("Yes")}}',
-            reverseButtons: true
-        }).then((result) => {
-            if (result.value) {
-                location.href = route;
-            }
-        })
-    }
-
     function form_alert(id, message) {
         Swal.fire({
             title: '{{translate("Are you sure?")}}',
